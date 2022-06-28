@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">Идентификация голоса</string>
+    <string name="tab_text_1">Настройки</string>
+    <string name="tab_text_2">Последние входящие вызовы</string>
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="settings_help_string">Вы можете включить проверку для всех входящих номеров или только из списка контактов</string>
+    <string name="all_calles">Все входящие вызовы</string>
+    <string name="no_in_contacts_only">Только незнакомые номера</string>
+    <string name="check_off">Отключить проверку</string>
+    <string name="store_time">Время хранения записей разговора в локальном хранилище (значение по умолчанию 2 дня)</string>
+    <string name="signals_listen">Прослушать сигналы:</string>
+    <string name="scum_call">Зовнок мошенника</string>
+    <string name="spam_call">Звонок реклама/спам</string>
+    <string name="Scammer">Мошенник</string>
+    <string name="Spammer">Спам</string>
+</resources>

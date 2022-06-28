@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/constraintLayout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".ui.main.PlaceholderFragment"
+    android:orientation="vertical"
+    android:background="#3f2f67"
+
+    >
+
+    <RadioGroup
+        android:id="@+id/radioGroup"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/white"
+        android:layout_margin="10dp"
+        android:padding="10dp">
+
+
+        <TextView
+            android:id="@+id/textView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:layout_marginBottom="20dp"
+            android:text="@string/settings_help_string"
+            android:textAlignment="center"
+            android:textColor="@color/black"
+            android:textSize="20sp"
+            tools:layout_editor_absoluteX="86dp"
+            tools:layout_editor_absoluteY="61dp" />
+
+        <RadioButton
+            android:id="@+id/check_all_calls"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="25dp"
+            android:layout_weight="1"
+            android:textColor="@color/black"
+            android:textSize="15sp"
+            android:text="@string/all_calles"/>
+
+
+        <RadioButton
+            android:id="@+id/check_some_calls"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="24dp"
+            android:layout_weight="1"
+            android:textColor="@color/black"
+            android:textSize="15sp"
+            android:text="@string/no_in_contacts_only"
+            />
+
+        <RadioButton
+            android:id="@+id/no_check"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="24dp"
+            android:layout_marginBottom="5dp"
+            android:layout_weight="1"
+            android:checked="true"
+            android:text="@string/check_off"
+            android:textColor="@color/black"
+
+            android:textSize="15sp" />
+    </RadioGroup>
+
+    <LinearLayout
+        android:paddingTop="10dp"
+        android:paddingBottom="10dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/white"
+        android:orientation="vertical"
+        android:layout_margin="10dp">
+
+        <TextView
+            android:layout_width="match_parent"
+
+            android:layout_height="wrap_content"
+            android:layout_marginStart="20dp"
+            android:layout_marginTop="20dp"
+            android:layout_marginEnd="20dp"
+            android:layout_marginBottom="20dp"
+            android:text="@string/store_time"
+            android:textColor="@color/black"
+            android:textSize="20sp"
+            android:gravity="center" />
+
+
+        <EditText
+            android:id="@+id/saving_interval"
+            android:layout_width="match_parent"
+            android:layout_height="30sp"
+            android:ems="10"
+            android:textColor="@color/blue_gray"
+            android:background="#A4C2E6"
+            android:layout_marginRight="10dp"
+            android:layout_marginLeft="10dp"
+            android:focusedByDefault="false"
+            android:maxLength="2"
+            android:inputType="numberDecimal"
+             />
+    </LinearLayout>
+
+    <LinearLayout
+        android:paddingTop="10dp"
+        android:paddingBottom="10dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/white"
+        android:orientation="vertical"
+        android:layout_margin="10dp">
+
+        <TextView
+            android:layout_width="match_parent"
+
+            android:layout_height="wrap_content"
+            android:layout_marginStart="20dp"
+            android:layout_marginTop="20dp"
+            android:layout_marginEnd="20dp"
+            android:layout_marginBottom="20dp"
+            android:text="@string/signals_listen"
+            android:textColor="@color/black"
+            android:textSize="20sp" />
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_gravity="center">
+
+            <ImageButton
+                android:id="@+id/scam_signal_button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:src="@drawable/scam_icon"
+                android:background="#FFFFFF"
+                android:layout_margin="10dp"
+                android:paddingEnd="25dp"
+                />
+
+            <ImageButton
+                android:id="@+id/spam_signal_button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:src="@drawable/spam_icon"
+                android:background="#FFFFFF"
+                android:layout_margin="10dp"/>
+        </LinearLayout>
+
+    </LinearLayout>
+
+
+</LinearLayout>
