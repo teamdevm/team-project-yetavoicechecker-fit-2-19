@@ -8,14 +8,16 @@ import android.content.SharedPreferences;
 import android.media.MediaRecorder;
 import android.os.Bundle;
 import android.telephony.TelephonyManager;
+import android.util.Log;
+import android.view.KeyEvent;
 import android.view.View;
+import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.RadioGroup;
 import android.widget.TextView;
 
 import androidx.fragment.app.FragmentActivity;
 import androidx.fragment.app.FragmentManager;
-import androidx.fragment.app.FragmentTransaction;
 import androidx.viewpager.widget.ViewPager;
 
 import com.example.voicecheck.databinding.ActivityMainBinding;
@@ -24,7 +26,10 @@ import com.google.android.material.tabs.TabLayout;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Date;
+import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.Calendar;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
@@ -34,45 +39,46 @@ import java.util.Map;
 
 public class MainActivity extends FragmentActivity {
 
-
+    public static final String DATE_FORMAT_NOW = "dd-MM-yyyy";
     public final static String BROADCAST_ACTION = "ru.android.p0961servicebackbroadcast";
     public final static String RECORD_START = "ru.android.Broadcast.Start";
     public final static String RECORD_STOP = "ru.android.Broadcast.Stop";
     public static Byte CheckState = 1;
-    LinkedHashSet<String> Numbers = new LinkedHashSet<String>();//входящие номера
-    LinkedHashSet<String> scamList = new LinkedHashSet<String>();//список мошенников
-    LinkedHashSet<String> spamList = new LinkedHashSet<String>();//список спамеров
+    LinkedHashSet<String> Numbers = new LinkedHashSet<>();//входящие номера
+    LinkedHashSet<String> scamList = new LinkedHashSet<>();//список мошенников
+    LinkedHashSet<String> spamList = new LinkedHashSet<>();//список спамеров
     //LinkedHashSet<Date>recordsHistory = new LinkedHashSet<Date>();//1 поле имя файла, 2-дата
-    Map<String, Date>recordsHistory = new HashMap<>();
+    Map<String, String>recordsHistory = new HashMap<>();
     private ActivityMainBinding binding;
 
 
 
-    private FragmentManager manager = getSupportFragmentManager();
-    private FragmentTransaction transaction;
+    private final FragmentManager manager = getSupportFragmentManager();
     private OneCallFragment frag;
-    SharedPreferences prefs, blackListFile, numbersKeeper, RecordDateKeeper;
+    SharedPreferences prefs;
+    SharedPreferences blackListFile;
+    SharedPreferences numbersKeeper;
+    SharedPreferences RecordDateKeeper;
     File audiofile;
     MediaRecorder recorder;
     boolean isRecording=false;
     File sampleDir;
+    public static Integer Record_keep_hysteresis;
+
+    public static String now() {
+        Calendar cal = Calendar.getInstance();
+        SimpleDateFormat sdf = new SimpleDateFormat(DATE_FORMAT_NOW);
+        return sdf.format(cal.getTime());
+    }
 
     private void startRecording(String file_name)
     {
-        sampleDir = new File(this.getCacheDir(), "/Records");
-        if (!sampleDir.exists()) {
-            sampleDir.mkdirs();
-        }
-            audiofile = new File(sampleDir.getAbsolutePath()+file_name + ".3gpp");
-
-
-
+        audiofile = new File(sampleDir.getAbsolutePath()+ file_name );//+ ".3gpp");
         recorder = new MediaRecorder();
                        //  recorder.setAudioSource(MediaRecorder.AudioSource.VOICE_CALL);
-
-        recorder.setAudioSource(MediaRecorder.AudioSource.VOICE_COMMUNICATION);
-        recorder.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP);
-        recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB);
+        recorder.setAudioSource(MediaRecorder.AudioSource.VOICE_DOWNLINK);
+        recorder.setOutputFormat(MediaRecorder.OutputFormat.AAC_ADTS);
+        recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
         recorder.setOutputFile(audiofile.getAbsolutePath());
         try {
             recorder.prepare();
@@ -84,22 +90,22 @@ public class MainActivity extends FragmentActivity {
             e.printStackTrace();
         }
 
-        Date CallDate = new Date();
-        recordsHistory.put(file_name,CallDate);//добавление звонка в базу
+        recordsHistory.put(file_name,now());//добавление звонка в базу
 
         try {
-        this.recorder.start();//вылазит эксепшн, запись пустая, но файл есть...
+        recorder.start();//вылазит эксепшн, запись пустая, но файл есть...
         isRecording = true;
-    }
-        catch (RuntimeException e) {
-        e.printStackTrace();
-    }
+        } catch (Throwable t) {
+            t.printStackTrace();
+            Log.w("LOG_TAG", t);
+        }
     }
 
     private void stopRecording() {
         if(isRecording) {
             isRecording = false;
             recorder.stop();
+            recorder.release();
         }
     }
 
@@ -113,9 +119,15 @@ public class MainActivity extends FragmentActivity {
 
 
 
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        sampleDir = new File(this.getCacheDir(), "/Records");
+        if (!sampleDir.exists()) {
+            sampleDir.mkdirs();
+        }
 
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
@@ -137,7 +149,6 @@ public class MainActivity extends FragmentActivity {
         tabs.setupWithViewPager(viewPager);
         PhoneStateChangedReceiver phoneStateChangedReceiver = new PhoneStateChangedReceiver();
         TelephonyManager tm = (TelephonyManager)getApplicationContext().getSystemService(Context.TELEPHONY_SERVICE);
-        transaction = manager.beginTransaction();
         BroadcastReceiver br = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
@@ -182,14 +193,21 @@ public class MainActivity extends FragmentActivity {
 
 
 
-        if(prefs.contains("CHECK_STATE"))
-        {
-            CheckState = Byte.parseByte(prefs.getString("CHECK_STATE", ""));
-        }
-        else CheckState = 0;
+        //if(prefs.contains("CHECK_STATE"))
+        //{
+            CheckState = Byte.parseByte(prefs.getString("CHECK_STATE", "0"));
+        //}
+        //else CheckState = 0;
+
+            Record_keep_hysteresis = prefs.getInt("RECORD_KEEP_OFFSET", 2);
+
+
+
+
         getBlackList();
         getNumbers();
         GetRecordsDB();
+        removeOldRecords();
 
 
 
@@ -205,6 +223,25 @@ public class MainActivity extends FragmentActivity {
                         switch (position)
                         {
                             case 0:
+                                EditText record_hyst_edit = (EditText) findViewById(R.id.saving_interval);
+                                record_hyst_edit.setOnKeyListener(new View.OnKeyListener() {
+                                    @Override
+                                    public boolean onKey(View view, int i, KeyEvent keyEvent) {
+                                        if (keyEvent.getAction() == KeyEvent.ACTION_DOWN && keyEvent.getKeyCode() == KeyEvent.KEYCODE_ENTER) {
+                                            try {
+                                                Record_keep_hysteresis = Integer.parseInt(String.valueOf(record_hyst_edit.getText()));
+                                            }
+                                            catch (NumberFormatException e)
+                                            {
+                                                Record_keep_hysteresis = 2;
+                                            }
+                                            record_hyst_edit.clearFocus();
+                                            record_hyst_edit.setCursorVisible(false);
+                                        }
+                                        return false;
+                                    }
+
+                                });
 
                                 RadioGroup radioGroup = (RadioGroup) findViewById(R.id.radioGroup);
                                 radioGroup.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener()
@@ -237,10 +274,27 @@ public class MainActivity extends FragmentActivity {
     @Override
     protected void onStop() {
         super.onStop();
+        prefs.edit().clear().apply();
         prefs.edit().putString("CHECK_STATE", Byte.toString(CheckState)).apply();//сохранение настройки проверки
+        prefs.edit().putInt("RECORD_KEEP_OFFSET", Record_keep_hysteresis).apply();
          StoreBlackList();//сохранение блеклиста
         StoreRecordsDB();
         saveNumbers();
+    }
+
+    void removeOldRecords()
+    {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy");
+        LocalDate date, dateNow = LocalDate.parse(now(), formatter);
+        for(Map.Entry<String, String> entry : recordsHistory.entrySet())
+        {
+             date = LocalDate.parse(entry.getValue(), formatter);
+             if(dateNow.minusDays(Record_keep_hysteresis).isAfter(date))
+             {
+                 new File(sampleDir.getAbsolutePath()+entry.getKey()).delete();
+             }
+
+        }
     }
 
 
@@ -298,14 +352,15 @@ public class MainActivity extends FragmentActivity {
     {
         //numbersKeeper.edit().clear().apply();
         RecordDateKeeper.edit().clear().apply();
-        for(Map.Entry<String,Date> entry : recordsHistory.entrySet()){
-            RecordDateKeeper.edit().putString(entry.getKey(), entry.getValue().toString()).apply();
+        String date;
+        for(Map.Entry<String,String> entry : recordsHistory.entrySet()){
+            RecordDateKeeper.edit().putString(entry.getKey(), entry.getValue()).apply();
         }
     }
 
     void GetRecordsDB()
     {
-        recordsHistory = (Map<String, Date>) RecordDateKeeper.getAll();
+        recordsHistory = (Map<String, String>) RecordDateKeeper.getAll();
     }
 
     void StoreBlackList()
@@ -329,7 +384,7 @@ public class MainActivity extends FragmentActivity {
         scamList.add(addingNumber);
         Numbers.remove(addingNumber);
         setOrUpdateCalls();
-        String audioPath = sampleDir.getAbsolutePath()+addingNumber + ".3gpp";//путь до аудиофайла...
+        String audioPath = sampleDir.getAbsolutePath()+addingNumber;//путь до аудиофайла...
         recordsHistory.remove(addingNumber);
         //deleteFile(audioPath);
         /*...отправка аудио с номером на сервер*/
@@ -342,7 +397,7 @@ public class MainActivity extends FragmentActivity {
         spamList.add(addingNumber);
         Numbers.remove(addingNumber);
         setOrUpdateCalls();
-        String audioPath = sampleDir.getAbsolutePath()+addingNumber + ".3gpp";//путь до аудиофайла...
+        String audioPath = sampleDir.getAbsolutePath()+addingNumber;//путь до аудиофайла...
 
         //deleteFile(audioPath);
         /*...отправка аудио с номером на сервер*/
