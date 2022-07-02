@@ -1,14 +1,13 @@
 package com.example.voicecheck;
 
+
+import android.app.NotificationManager;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
-import android.media.MediaRecorder;
 import android.os.Bundle;
-import android.telephony.TelephonyManager;
-import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.widget.EditText;
@@ -17,7 +16,6 @@ import android.widget.RadioGroup;
 import android.widget.TextView;
 
 import androidx.fragment.app.FragmentActivity;
-import androidx.fragment.app.FragmentManager;
 import androidx.viewpager.widget.ViewPager;
 
 import com.example.voicecheck.databinding.ActivityMainBinding;
@@ -25,7 +23,6 @@ import com.example.voicecheck.ui.main.SectionsPagerAdapter;
 import com.google.android.material.tabs.TabLayout;
 
 import java.io.File;
-import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -40,28 +37,22 @@ import java.util.Map;
 public class MainActivity extends FragmentActivity {
 
     public static final String DATE_FORMAT_NOW = "dd-MM-yyyy";
-    public final static String BROADCAST_ACTION = "ru.android.p0961servicebackbroadcast";
-    public final static String RECORD_START = "ru.android.Broadcast.Start";
-    public final static String RECORD_STOP = "ru.android.Broadcast.Stop";
     public static Byte CheckState = 1;
+    public static final String BROADCAST_ACTION = "com.example.voicecheck.send_phone_num";
     LinkedHashSet<String> Numbers = new LinkedHashSet<>();//входящие номера
     LinkedHashSet<String> scamList = new LinkedHashSet<>();//список мошенников
     LinkedHashSet<String> spamList = new LinkedHashSet<>();//список спамеров
     //LinkedHashSet<Date>recordsHistory = new LinkedHashSet<Date>();//1 поле имя файла, 2-дата
     Map<String, String>recordsHistory = new HashMap<>();
     private ActivityMainBinding binding;
+    Intent RecordingService;
 
 
-
-    private final FragmentManager manager = getSupportFragmentManager();
     private OneCallFragment frag;
     SharedPreferences prefs;
     SharedPreferences blackListFile;
     SharedPreferences numbersKeeper;
     SharedPreferences RecordDateKeeper;
-    File audiofile;
-    MediaRecorder recorder;
-    boolean isRecording=false;
     File sampleDir;
     public static Integer Record_keep_hysteresis;
 
@@ -71,49 +62,13 @@ public class MainActivity extends FragmentActivity {
         return sdf.format(cal.getTime());
     }
 
-    private void startRecording(String file_name)
-    {
-        audiofile = new File(sampleDir.getAbsolutePath()+ file_name );//+ ".3gpp");
-        recorder = new MediaRecorder();
-                       //  recorder.setAudioSource(MediaRecorder.AudioSource.VOICE_CALL);
-        recorder.setAudioSource(MediaRecorder.AudioSource.VOICE_DOWNLINK);
-        recorder.setOutputFormat(MediaRecorder.OutputFormat.AAC_ADTS);
-        recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
-        recorder.setOutputFile(audiofile.getAbsolutePath());
-        try {
-            recorder.prepare();
-        }
-        catch (IllegalStateException e) {
-            e.printStackTrace();
-        }
-        catch (IOException e) {
-            e.printStackTrace();
-        }
 
-        recordsHistory.put(file_name,now());//добавление звонка в базу
 
-        try {
-        recorder.start();//вылазит эксепшн, запись пустая, но файл есть...
-        isRecording = true;
-        } catch (Throwable t) {
-            t.printStackTrace();
-            Log.w("LOG_TAG", t);
-        }
-    }
-
-    private void stopRecording() {
-        if(isRecording) {
-            isRecording = false;
-            recorder.stop();
-            recorder.release();
-        }
-    }
 
     @Override
     protected void onResume() {
     super.onResume();
     getNumbers();
-    //setOrUpdateCalls();
     getBlackList();
     }
 
@@ -124,10 +79,7 @@ public class MainActivity extends FragmentActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        sampleDir = new File(this.getCacheDir(), "/Records");
-        if (!sampleDir.exists()) {
-            sampleDir.mkdirs();
-        }
+
 
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
@@ -147,59 +99,8 @@ public class MainActivity extends FragmentActivity {
         viewPager.setAdapter(sectionsPagerAdapter);
         TabLayout tabs = binding.tabs;
         tabs.setupWithViewPager(viewPager);
-        PhoneStateChangedReceiver phoneStateChangedReceiver = new PhoneStateChangedReceiver();
-        TelephonyManager tm = (TelephonyManager)getApplicationContext().getSystemService(Context.TELEPHONY_SERVICE);
-        BroadcastReceiver br = new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context context, Intent intent) {
-                boolean check1=false, check2=false;
-                try {
-                    {
-                        if(scamList.contains(intent.getStringExtra("incomingNumber"))) check1 = true;
-                        if(spamList.contains(intent.getStringExtra("incomingNumber"))) check2 = true;
-                        if(!check1&&!check2) Numbers.add(intent.getStringExtra("incomingNumber"));
-                    }
-                }
-                catch (NullPointerException e)
-                {
-                    Numbers.add(intent.getStringExtra("incomingNumber"));
-                }
-
-            }
-        };
-        IntentFilter intFilt = new IntentFilter(BROADCAST_ACTION);
-        registerReceiver(br, intFilt);
-
-
-        BroadcastReceiver recordStartReceiver = new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context context, Intent intent) {
-                if(intent.getAction()==MainActivity.RECORD_START && !isRecording)
-                    startRecording(intent.getStringExtra("RECORD_INCOMING_NUMBER"));
-            }
-        };
-        IntentFilter intentFilterStart = new IntentFilter(RECORD_START);
-        registerReceiver(recordStartReceiver, intentFilterStart);
-
-        BroadcastReceiver recordStopReceiver = new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context context, Intent intent) {
-                if(intent.getAction()==MainActivity.RECORD_STOP && isRecording)
-                    stopRecording();
-            }
-        };
-        IntentFilter intentFilterStop = new IntentFilter(RECORD_STOP);
-        registerReceiver(recordStopReceiver, intentFilterStop);
-
-
-
-        //if(prefs.contains("CHECK_STATE"))
-        //{
-            CheckState = Byte.parseByte(prefs.getString("CHECK_STATE", "0"));
-        //}
-        //else CheckState = 0;
-
-            Record_keep_hysteresis = prefs.getInt("RECORD_KEEP_OFFSET", 2);
+        CheckState = Byte.parseByte(prefs.getString("CHECK_STATE", "0"));
+        Record_keep_hysteresis = prefs.getInt("RECORD_KEEP_OFFSET", 2);
 
 
 
@@ -208,6 +109,32 @@ public class MainActivity extends FragmentActivity {
         getNumbers();
         GetRecordsDB();
         removeOldRecords();
+        RecordingService = new Intent(this, Record_service.class);
+       if(CheckState!=0) {
+           startForegroundService(RecordingService);
+       }
+
+        BroadcastReceiver br = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                boolean check1=false, check2=false;
+                try {
+                    {
+                        if(scamList.contains(intent.getStringExtra("INCOMING_NUBMER"))) check1 = true;
+                        if(spamList.contains(intent.getStringExtra("INCOMING_NUBMER"))) check2 = true;
+                        if(!check1&&!check2) Numbers.add(intent.getStringExtra("INCOMING_NUBMER"));
+                    }
+                }
+                catch (NullPointerException e)
+                {
+                    Numbers.add(intent.getStringExtra("INCOMING_NUBMER"));
+                }
+
+            }
+        };
+        IntentFilter intFilt = new IntentFilter(BROADCAST_ACTION);
+        registerReceiver(br, intFilt);
+
 
 
 
@@ -253,8 +180,8 @@ public class MainActivity extends FragmentActivity {
                                             case R.id.no_check: CheckState = 0;break;//проверка отключена
                                             case R.id.check_some_calls: CheckState = 1; break;//только незнакомые номера
                                             case R.id.check_all_calls: CheckState = 2; break;//все номера
-                                            default: CheckState = 0; break;
                                         }
+                                        updateCheckFlag(CheckState);
                                     }
                                 });
                             break;
@@ -271,6 +198,26 @@ public class MainActivity extends FragmentActivity {
     }
 
 
+    void updateCheckFlag(int flag)
+    {
+        Intent send;
+        switch (flag)
+        {
+            case 0:
+                NotificationManager nm = (NotificationManager)getSystemService(Context.NOTIFICATION_SERVICE);
+                nm.cancel(504312);
+                stopService(RecordingService); break;
+            case 1:
+                 RecordingService = new Intent(this, Record_service.class);
+                RecordingService.putExtra("ONLY_CONTACTS", true);
+                startForegroundService(RecordingService); break;
+            case 2:
+                RecordingService = new Intent(this, Record_service.class);
+                RecordingService.putExtra("ONLY_CONTACTS", false);
+                startForegroundService(RecordingService); break;
+        }
+    }
+
     @Override
     protected void onStop() {
         super.onStop();
@@ -281,6 +228,10 @@ public class MainActivity extends FragmentActivity {
         StoreRecordsDB();
         saveNumbers();
     }
+
+
+
+
 
     void removeOldRecords()
     {
