@@ -10,12 +10,16 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Build;
 import android.os.IBinder;
+import android.os.Vibrator;
 import android.telephony.TelephonyManager;
 
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 
@@ -29,6 +33,8 @@ public class Record_service extends Service {
     private int startId;
     Recorder recorder = null;
     boolean contactsOnly;
+    String audiof;
+    String identify;
 
     public static String now() {
         Calendar cal = Calendar.getInstance();
@@ -47,6 +53,8 @@ public class Record_service extends Service {
     {
         super.onCreate();
         sampleDir = new File(this.getCacheDir(), "/Records");
+        identify=this.getCacheDir()+"/moshident.py";
+
         if (!sampleDir.exists()) {
             sampleDir.mkdirs();
         }
@@ -66,12 +74,36 @@ public class Record_service extends Service {
                     Intent returnToMain = new Intent(MainActivity.BROADCAST_ACTION);
                     returnToMain.putExtra("INCOMING_NUBMER", intent.getStringExtra(TelephonyManager.EXTRA_INCOMING_NUMBER));
                     context.sendBroadcast(returnToMain);
-
-                    recorder.startRecording(intent.getStringExtra(TelephonyManager.EXTRA_INCOMING_NUMBER));
+                    //audiof=intent.getStringExtra(TelephonyManager.EXTRA_INCOMING_NUMBER);
+                    recorder.startRecording(audiof);
                 }
                 if (phoneState.equals(TelephonyManager.EXTRA_STATE_IDLE))
                 {
                     recorder.stopRecording();
+                    /*String ifile=sampleDir.getAbsolutePath()+"/"+ audiof+".wav";
+                    ProcessBuilder pb=new ProcessBuilder("python",identify,ifile);
+                    Process process=null;
+                    try
+                    {
+                        process=pb.start();
+                        process.waitFor();
+                        BufferedReader in = new BufferedReader(
+                                new InputStreamReader(process.getInputStream()));
+                        StringBuffer buffer = new StringBuffer();
+                        String line = null;
+                        while ((line = in.readLine()) != null){
+                            buffer.append(line);
+                        }
+                        if(buffer.toString()=="1")
+                        {
+                            Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+                            v.vibrate(50);
+                        }
+                    } catch (IOException | InterruptedException e) {
+                        e.printStackTrace();
+                    }*/
+
+
                 }
             }
         };

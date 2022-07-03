@@ -8,6 +8,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.os.Vibrator;
 import android.view.KeyEvent;
 import android.view.View;
 import android.widget.EditText;
@@ -22,7 +23,10 @@ import com.example.voicecheck.databinding.ActivityMainBinding;
 import com.example.voicecheck.ui.main.SectionsPagerAdapter;
 import com.google.android.material.tabs.TabLayout;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -349,8 +353,16 @@ public class MainActivity extends FragmentActivity {
         Numbers.remove(addingNumber);
         setOrUpdateCalls();
         String audioPath = sampleDir.getAbsolutePath()+addingNumber;//путь до аудиофайла...
-
-        //deleteFile(audioPath);
-        /*...отправка аудио с номером на сервер*/
+        recordsHistory.remove(addingNumber);
+        /*String putbase=this.getCacheDir()+"/moshpit.py";
+        ProcessBuilder pb=new ProcessBuilder("python",putbase,audioPath);
+        Process process=null;
+        try
+        {
+            process=pb.start();
+            process.waitFor();
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }*/
     }
 }
