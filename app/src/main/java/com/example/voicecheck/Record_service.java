@@ -29,6 +29,8 @@ public class Record_service extends Service {
     private int startId;
     Recorder recorder = null;
     boolean contactsOnly;
+    String lastCallNumber;
+    String lastRecordPath;
 
     public static String now() {
         Calendar cal = Calendar.getInstance();
@@ -55,23 +57,23 @@ public class Record_service extends Service {
         Phone_call_reciever = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
-                if(intent.getStringExtra(TelephonyManager.EXTRA_INCOMING_NUMBER) != null){
+                if(intent.getStringExtra(TelephonyManager.EXTRA_INCOMING_NUMBER) != null) {
                     String phoneState = intent.getStringExtra(TelephonyManager.EXTRA_STATE);
                     if (phoneState.equals(TelephonyManager.EXTRA_STATE_RINGING)) {
                         String incomingNumber = intent.getStringExtra(TelephonyManager.EXTRA_INCOMING_NUMBER);
                     }
-                }
-                String phoneState = intent.getStringExtra(TelephonyManager.EXTRA_STATE);
-                if (phoneState.equals(TelephonyManager.EXTRA_STATE_OFFHOOK) && null != intent.getStringExtra(TelephonyManager.EXTRA_INCOMING_NUMBER)) {
-                    Intent returnToMain = new Intent(MainActivity.BROADCAST_ACTION);
-                    returnToMain.putExtra("INCOMING_NUBMER", intent.getStringExtra(TelephonyManager.EXTRA_INCOMING_NUMBER));
-                    context.sendBroadcast(returnToMain);
 
-                    recorder.startRecording(intent.getStringExtra(TelephonyManager.EXTRA_INCOMING_NUMBER));
-                }
-                if (phoneState.equals(TelephonyManager.EXTRA_STATE_IDLE))
-                {
-                    recorder.stopRecording();
+                    if (phoneState.equals(TelephonyManager.EXTRA_STATE_OFFHOOK) && null != intent.getStringExtra(TelephonyManager.EXTRA_INCOMING_NUMBER)) {
+                        Intent returnToMain = new Intent(MainActivity.BROADCAST_ACTION);
+                        returnToMain.putExtra("INCOMING_NUBMER", intent.getStringExtra(TelephonyManager.EXTRA_INCOMING_NUMBER));
+                        context.sendBroadcast(returnToMain);
+                        lastCallNumber = intent.getStringExtra(TelephonyManager.EXTRA_INCOMING_NUMBER);
+                        recorder.startRecording(intent.getStringExtra(TelephonyManager.EXTRA_INCOMING_NUMBER));
+                    }
+                    if (phoneState.equals(TelephonyManager.EXTRA_STATE_IDLE)) {
+                        recorder.stopRecording();
+                        lastRecordPath = sampleDir.getAbsolutePath() + "/" + lastCallNumber + ".wav";
+                    }
                 }
             }
         };
@@ -104,7 +106,6 @@ public class Record_service extends Service {
             Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
                     .setContentTitle("Служба записи звонков активна")
                     .setContentText("").build();
-
             startForeground(504312, notification);
         }
         return Service.START_REDELIVER_INTENT;

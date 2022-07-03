@@ -78,6 +78,10 @@ public class MainActivity extends FragmentActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        sampleDir = new File(this.getCacheDir(), "/Records");
+        if (!sampleDir.exists()) {
+            sampleDir.mkdirs();
+        }
 
 
 
